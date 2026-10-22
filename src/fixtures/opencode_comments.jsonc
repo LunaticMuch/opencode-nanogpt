@@ -1,0 +1,14 @@
+{
+  // OpenCode config — keep this comment!
+  "$schema": "https://opencode.ai/config.json",
+
+  "theme": "dark", /* inline block */
+
+  "provider": {
+    // we have other providers too
+    "anthropic": {
+      "options": { "apiKey": "{env:ANTHROPIC_API_KEY}" }
+    }
+  },
+  "mcp": {}
+}

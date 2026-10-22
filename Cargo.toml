@@ -1,0 +1,31 @@
+[package]
+name = "opencode-nanogpt"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.75"
+description = "Configure OpenCode to use NanoGPT models and MCP tools, with comment-preserving JSONC edits"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/LunaticMuch/opencode-nanogpt"
+homepage = "https://github.com/LunaticMuch/opencode-nanogpt"
+keywords = ["opencode", "nanogpt", "mcp", "cli"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "opencode-nanogpt"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+ureq = { version = "2", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+dirs = "5"
+tempfile = "3"
+chrono = "0.4"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

@@ -1,0 +1,11 @@
+{
+  "deepseek/deepseek-v4-flash-0731": { "price": 0.1, "created": 200 },
+  "deepseek/deepseek-v4-flash-0120": { "price": 0.1, "created": 100 },
+  "deepseek/deepseek-v4-flash-0101": { "price": 0.1, "created": 10 },
+  "deepseek/deepseek-v4": { "price": 0.2, "created": 50 },
+  "openai/gpt-4o": { "price": 0.5, "created": 300 },
+  "openai/gpt-4o-mini": { "price": 0.15, "created": 400 },
+  "anthropic/claude-3-202407": { "price": 0.8 },
+  "anthropic/claude-3-202312": { "price": 0.8 },
+  "mystery/unknown-model": {}
+}
