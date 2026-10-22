@@ -22,3 +22,23 @@ pub const COST_WARNING: &str = "\
 NanoGPT MCP written. When `enabled` is true, its tools (search, scrape, media)
 bill your NanoGPT balance on each call and consume model context. See
 https://docs.nano-gpt.com/integrations/mcp";
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn env_mode_writes_env_ref() {
+        let v = build_mcp_block(true, None, "FOO_KEY");
+        assert_eq!(v["environment"]["NANOGPT_API_KEY"], "{env:FOO_KEY}");
+        assert_eq!(v["enabled"], true);
+    }
+
+    #[test]
+    fn static_mode_writes_literal() {
+        let v = build_mcp_block(false, Some("sk-secret"), "NANOGPT_API_KEY");
+        assert_eq!(v["environment"]["NANOGPT_API_KEY"], "sk-secret");
+        assert_eq!(v["enabled"], false);
+    }
+}

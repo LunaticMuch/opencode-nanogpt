@@ -142,3 +142,35 @@ fn extract_api_key(src: &str) -> Option<String> {
         Some(value)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extract_api_key_literal() {
+        let src = r#"{ "provider": { "nanogpt": { "options": { "apiKey": "sk-literal" } } } }"#;
+        assert_eq!(extract_api_key(src).as_deref(), Some("sk-literal"));
+    }
+
+    #[test]
+    fn extract_api_key_env_ref_resolves() {
+        std::env::set_var("NANOGPT_TEST_KEY", "resolved-value");
+        let src = r#"{ "provider": { "nanogpt": { "options": { "apiKey": "{env:NANOGPT_TEST_KEY}" } } } }"#;
+        assert_eq!(extract_api_key(src).as_deref(), Some("resolved-value"));
+        std::env::remove_var("NANOGPT_TEST_KEY");
+    }
+
+    #[test]
+    fn extract_api_key_missing_env_returns_none() {
+        std::env::remove_var("NANOGPT_MISSING_KEY");
+        let src = r#"{ "provider": { "nanogpt": { "options": { "apiKey": "{env:NANOGPT_MISSING_KEY}" } } } }"#;
+        assert!(extract_api_key(src).is_none());
+    }
+
+    #[test]
+    fn extract_api_key_absent() {
+        let src = r#"{ "provider": { "nanogpt": { "options": {} } } }"#;
+        assert!(extract_api_key(src).is_none());
+    }
+}
