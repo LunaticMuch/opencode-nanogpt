@@ -38,9 +38,12 @@ pub enum Command {
 
 #[derive(Args, Clone)]
 pub struct InitArgs {
-    /// Env var name for the API key
-    #[arg(long, default_value = "NANOGPT_API_KEY")]
+    /// Env var name for the API key (used when --api-key is not given)
+    #[arg(long, default_value = "NANOGPT_API_KEY", conflicts_with = "api_key")]
     pub api_key_env: String,
+    /// Static API key string to store in the config instead of an env reference
+    #[arg(long, conflicts_with = "api_key_env")]
+    pub api_key: Option<String>,
     /// Base URL for the NanoGPT API
     #[arg(long, default_value = "https://nano-gpt.com/api/v1")]
     pub base_url: String,

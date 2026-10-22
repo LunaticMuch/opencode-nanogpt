@@ -5,12 +5,16 @@ use serde_json::{json, Value};
 /// Package name verified against:
 /// https://docs.nano-gpt.com/integrations/mcp
 /// (Option 1: `npx -y @nanogpt/mcp`)[reference:0]
-pub fn build_mcp_block(enabled: bool) -> Value {
+pub fn build_mcp_block(enabled: bool, api_key_static: Option<&str>, api_key_env: &str) -> Value {
+    let env_value = match api_key_static {
+        Some(key) => key.to_string(),
+        None => format!("{{env:{api_key_env}}}"),
+    };
     json!({
         "type": "local",
         "command": ["npx", "-y", "@nanogpt/mcp"],
         "enabled": enabled,
-        "environment": { "NANOGPT_API_KEY": "{env:NANOGPT_API_KEY}" }
+        "environment": { "NANOGPT_API_KEY": env_value }
     })
 }
 

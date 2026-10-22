@@ -20,9 +20,11 @@ pub fn run(global: GlobalArgs, args: UpdateModelsArgs) -> Result<()> {
         .unwrap_or_else(|| "https://nano-gpt.com/api/v1".into());
 
     // API key is optional here: `/models` works unauthenticated, but if
-    // the user has NANOGPT_API_KEY set we send it anyway so the request
-    // is attributable and works against any stricter deployments.
-    let api_key = std::env::var("NANOGPT_API_KEY").ok();
+    // the config stores one (either as `{env:NAME}` or a literal string)
+    // we send it anyway so the request is attributable and works against
+    // any stricter deployments. Fall back to NANOGPT_API_KEY.
+    let api_key = extract_api_key(&original)
+        .or_else(|| std::env::var("NANOGPT_API_KEY").ok());
 
     eprintln!("fetching models from {base_url} …");
     let models = fetch_models(&base_url, api_key.as_deref(), true)?;
@@ -87,7 +89,7 @@ pub fn run(global: GlobalArgs, args: UpdateModelsArgs) -> Result<()> {
 /// shows something legible.
 fn display_name(id: &str) -> String {
     id.split('/')
-        .last()
+        .next_back()
         .unwrap_or(id)
         .replace(['-', '_'], " ")
 }
@@ -118,4 +120,25 @@ fn extract_base_url(src: &str) -> Option<String> {
     .ok()??;
     let (s, e) = span;
     serde_json::from_str::<String>(&src[s..e]).ok()
+}
+
+/// Read `provider.nanogpt.options.apiKey` from the config, if present.
+/// Resolves `{env:NAME}` references to the corresponding environment
+/// variable; literal strings are returned as-is.
+fn extract_api_key(src: &str) -> Option<String> {
+    let span = find_value_span(
+        src.as_bytes(),
+        &["provider", "nanogpt", "options", "apiKey"],
+    )
+    .ok()??;
+    let (s, e) = span;
+    let value: String = serde_json::from_str(&src[s..e]).ok()?;
+    if let Some(name) = value
+        .strip_prefix("{env:")
+        .and_then(|v| v.strip_suffix('}'))
+    {
+        std::env::var(name).ok()
+    } else {
+        Some(value)
+    }
 }
