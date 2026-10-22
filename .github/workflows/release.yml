@@ -60,4 +60,4 @@ jobs:
           files: |
             ${{ env.ASSET }}
             ${{ env.ASSET }}.sha256
-          generate_release_notes: true
+          generate_release_notes: false

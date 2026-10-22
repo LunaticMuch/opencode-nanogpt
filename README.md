@@ -14,7 +14,7 @@ brew install <you>/tap/opencode-nanogpt
 ```
 
 Or download a pre-built binary from the
-[releases page](https://github.com/CHANGE_ME/opencode-nanogpt/releases).
+[releases page](https://github.com/LunaticMuch/opencode-nanogpt/releases).
 
 ## Quick start
 
