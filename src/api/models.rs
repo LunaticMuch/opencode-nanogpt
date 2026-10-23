@@ -2,11 +2,35 @@ use anyhow::{bail, Result};
 use serde::Deserialize;
 use serde_json::Value;
 
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct ModelPricing {
+    #[serde(default)]
+    pub prompt: Option<f64>,
+    #[serde(default)]
+    pub completion: Option<f64>,
+    #[serde(default)]
+    pub currency: Option<String>,
+    #[serde(default)]
+    pub unit: Option<String>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct ModelEntry {
     pub id: String,
     #[serde(default)]
     pub created: Option<i64>,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default, rename = "context_length")]
+    pub context_length: Option<i64>,
+    #[serde(default, rename = "max_output_tokens")]
+    pub max_output_tokens: Option<i64>,
+    #[serde(default)]
+    pub pricing: Option<ModelPricing>,
+    #[serde(default)]
+    pub capabilities: Option<serde_json::Value>,
 }
 
 /// Tolerant parser for the NanoGPT `/models` response.
@@ -39,11 +63,7 @@ pub fn parse_models(v: &Value) -> Result<Vec<ModelEntry>> {
         }
         let mut out = Vec::with_capacity(obj.len());
         for (id, val) in obj {
-            let created = val.get("created").and_then(|x| x.as_i64());
-            out.push(ModelEntry {
-                id: id.clone(),
-                created,
-            });
+            out.push(entry_from(id.clone(), val));
         }
         return Ok(out);
     }
@@ -55,13 +75,30 @@ fn from_array(arr: &[Value]) -> Vec<ModelEntry> {
     let mut out = Vec::with_capacity(arr.len());
     for item in arr {
         if let Some(id) = item.get("id").and_then(|x| x.as_str()) {
-            out.push(ModelEntry {
-                id: id.to_string(),
-                created: item.get("created").and_then(|x| x.as_i64()),
-            });
+            out.push(entry_from(id.to_string(), item));
         }
     }
     out
+}
+
+fn entry_from(id: String, val: &Value) -> ModelEntry {
+    let created = val.get("created").and_then(|x| x.as_i64());
+    let name = val.get("name").and_then(|x| x.as_str()).map(str::to_string);
+    let description = val.get("description").and_then(|x| x.as_str()).map(str::to_string);
+    let context_length = val.get("context_length").and_then(|x| x.as_i64());
+    let max_output_tokens = val.get("max_output_tokens").and_then(|x| x.as_i64());
+    let pricing = val.get("pricing").cloned().and_then(|p| serde_json::from_value(p).ok());
+    let capabilities = val.get("capabilities").cloned();
+    ModelEntry {
+        id,
+        created,
+        name,
+        description,
+        context_length,
+        max_output_tokens,
+        pricing,
+        capabilities,
+    }
 }
 
 #[cfg(test)]

@@ -55,6 +55,12 @@ mod tests {
         ModelEntry {
             id: id.to_string(),
             created,
+            name: None,
+            description: None,
+            context_length: None,
+            max_output_tokens: None,
+            pricing: None,
+            capabilities: None,
         }
     }
 
