@@ -50,10 +50,37 @@ pub fn run(global: GlobalArgs, args: UpdateModelsArgs) -> Result<()> {
     // that OpenCode accepts; expand here if the schema ever needs more.
     let mut map = serde_json::Map::new();
     for id in &ids {
-        map.insert(
-            id.clone(),
-            json!({ "name": display_name(id) }),
-        );
+        let entry = models.iter().find(|m| m.id == *id);
+        let mut obj = serde_json::Map::new();
+        let name = entry
+            .and_then(|e| e.name.clone())
+            .unwrap_or_else(|| display_name(id));
+        obj.insert("name".to_string(), serde_json::json!(name));
+
+        if let Some(e) = entry {
+            // Context/output limits, when the API provides them.
+            if let Some(ctx) = e.context_length {
+                let mut limit = serde_json::Map::new();
+                limit.insert("context".to_string(), serde_json::json!(ctx));
+                if let Some(out) = e.max_output_tokens {
+                    limit.insert("output".to_string(), serde_json::json!(out));
+                }
+                if limit.contains_key("output") {
+                    obj.insert("limit".to_string(), serde_json::Value::Object(limit));
+                }
+            }
+            // Cost info (NanoGPT reports per-million-token prices).
+            if let Some(pricing) = &e.pricing {
+                if let (Some(input), Some(output)) = (pricing.prompt, pricing.completion) {
+                    let mut cost = serde_json::Map::new();
+                    cost.insert("input".to_string(), serde_json::json!(input));
+                    cost.insert("output".to_string(), serde_json::json!(output));
+                    obj.insert("cost".to_string(), serde_json::Value::Object(cost));
+                }
+            }
+        }
+
+        map.insert(id.clone(), serde_json::Value::Object(obj));
     }
 
     // Unless --prune is given, preserve any models already in the config

@@ -82,7 +82,10 @@ fn replace_span(src: &str, start: usize, end: usize, value: &Value) -> String {
     let was_inline = !original.contains('\n');
     let indent = line_indent(src, start);
 
-    let serialized = if was_inline {
+    // Keep simple scalar / single-field values compact when they were
+    // originally inline, but pretty-print anything larger so generated
+    // files stay readable.
+    let serialized = if was_inline && is_simple_value(value) {
         serde_json::to_string(value).expect("serialize")
     } else {
         reindent(
@@ -96,6 +99,14 @@ fn replace_span(src: &str, start: usize, end: usize, value: &Value) -> String {
     out.push_str(&serialized);
     out.push_str(&src[end..]);
     out
+}
+
+fn is_simple_value(value: &Value) -> bool {
+    match value {
+        Value::Object(m) => m.len() <= 1 && m.values().all(is_simple_value),
+        Value::Array(a) => a.len() <= 1 && a.iter().all(is_simple_value),
+        _ => true,
+    }
 }
 
 fn insert_value(src: &str, path: &[&str], value: &Value) -> Result<String> {
