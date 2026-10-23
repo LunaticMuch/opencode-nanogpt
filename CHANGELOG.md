@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.1](https://github.com/LunaticMuch/opencode-nanogpt/compare/v1.2.0...v1.2.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* enhance release workflow ([fd9b1a6](https://github.com/LunaticMuch/opencode-nanogpt/commit/fd9b1a662a73e3a1da66f357e95fdb4dc62d2b4c))
+* release when tagged ([4243b52](https://github.com/LunaticMuch/opencode-nanogpt/commit/4243b522fa7e6f77cad8f8b726b5ee8384a906e0))
+
 ## [1.2.0](https://github.com/LunaticMuch/opencode-nanogpt/compare/v1.1.0...v1.2.0) (2026-10-23)
 
 
