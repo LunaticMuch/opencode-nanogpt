@@ -23,6 +23,7 @@ anyhow = "1"
 dirs = "5"
 tempfile = "3"
 chrono = "0.4"
+crossterm = "0.29"
 
 [profile.release]
 lto = true

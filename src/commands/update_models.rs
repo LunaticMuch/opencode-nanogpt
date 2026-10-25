@@ -6,6 +6,7 @@ use crate::config::jsonc::{find_value_span, upsert};
 use crate::filter::select::{select, Options};
 use crate::paths;
 use anyhow::{Context, Result};
+use std::io::IsTerminal;
 use serde_json::{json, Value};
 
 pub fn run(global: GlobalArgs, args: UpdateModelsArgs) -> Result<()> {
@@ -30,14 +31,26 @@ pub fn run(global: GlobalArgs, args: UpdateModelsArgs) -> Result<()> {
     let models = fetch_models(&base_url, api_key.as_deref(), true)?;
     eprintln!("got {} models", models.len());
 
-    let ids = select(
-        &models,
-        &Options {
-            per_family: args.per_family,
-            include: &args.include,
-            exclude: &args.exclude,
-        },
-    );
+    let ids = if args.interactive {
+        if !std::io::stdin().is_terminal() {
+            anyhow::bail!("--interactive requires a TTY");
+        }
+        let existing: std::collections::HashSet<String> =
+            existing_model_ids(&original).into_iter().collect();
+        match crate::commands::select::select_models(&models, &existing)? {
+            Some(ids) => ids,
+            None => anyhow::bail!("selection cancelled"),
+        }
+    } else {
+        select(
+            &models,
+            &Options {
+                per_family: args.per_family,
+                include: &args.include,
+                exclude: &args.exclude,
+            },
+        )
+    };
     eprintln!("retained {} after filtering", ids.len());
 
     if ids.is_empty() {

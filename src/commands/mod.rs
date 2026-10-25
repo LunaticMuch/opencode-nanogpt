@@ -1,5 +1,6 @@
 pub mod format;
 pub mod init;
+pub mod select;
 pub mod rollback;
 pub mod update_models;
 pub mod validate;

@@ -10,7 +10,8 @@ comments, formatting, and every other config section stay byte-identical.
 Homebrew (once the tap is published):
 
 ```bash
-brew install <you>/tap/opencode-nanogpt
+brew trust --formula lunaticmuch/tap/opencode-nanogpt
+brew install lunaticmuch/tap/opencode-nanogpt
 ```
 
 Or download a pre-built binary from the
@@ -23,6 +24,7 @@ export NANOGPT_API_KEY=sk-...
 
 opencode-nanogpt init                      # provider added, MCP disabled
 opencode-nanogpt update-models             # keeps latest 2 per family
+opencode-nanogpt update-models --interactive  # pick models from a searchable TUI
 opencode-nanogpt update-models --per-family 1 --include 'deepseek*'
 opencode-nanogpt validate                  # confirms the section is well-formed
 ```
@@ -64,6 +66,19 @@ decision. When MCP is written, the CLI prints a cost/context reminder.
 **MCP prerequisite:** the injected command is `npx -y @nanogpt/mcp`, which
 requires Node.js 22+ on the machine running OpenCode. The Rust binary itself
 has no runtime dependencies.
+
+## Interactive model selection
+
+For catalogs with hundreds of models, use the searchable TUI:
+
+```bash
+opencode-nanogpt update-models --interactive
+```
+
+- Type to filter the full list by model ID or display name.
+- Arrow keys move the cursor; Space toggles a model; Enter confirms.
+- Esc or Ctrl-C cancels without writing anything.
+- Existing models are pre-selected, but the final config is replaced by your selection.
 
 ## Model filtering
 

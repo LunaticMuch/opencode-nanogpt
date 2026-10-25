@@ -81,6 +81,9 @@ pub enum McpMode {
 
 #[derive(Args, Clone)]
 pub struct UpdateModelsArgs {
+    /// Interactively select models from the full NanoGPT catalog
+    #[arg(long, short = 'i')]
+    pub interactive: bool,
     /// Keep the latest N per family
     #[arg(long, default_value_t = 2)]
     pub per_family: usize,
