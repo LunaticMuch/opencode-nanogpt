@@ -11,6 +11,20 @@ use std::collections::HashSet;
 use std::io::{stdout, Write};
 use std::time::Duration;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SubFilter {
+    All,
+    Included,
+    Excluded,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum MultFilter {
+    All,
+    One,
+    Two,
+}
+
 pub fn select_models(
     models: &[ModelEntry],
     existing: &HashSet<String>,
@@ -32,14 +46,16 @@ fn run_select(
     let mut filter = String::new();
     let mut checked: Vec<bool> = models.iter().map(|m| existing.contains(&m.id)).collect();
     let mut cursor: usize = 0;
+    let mut sub_filter = SubFilter::All;
+    let mut mult_filter = MultFilter::All;
 
     loop {
-        let filtered = filtered_indices(models, &filter);
+        let filtered = filtered_indices(models, &filter, sub_filter, mult_filter);
         if cursor >= filtered.len() && !filtered.is_empty() {
             cursor = filtered.len() - 1;
         }
 
-        render(models, &filtered, &checked, cursor, &filter)?;
+        render(models, &filtered, &checked, cursor, &filter, sub_filter, mult_filter)?;
 
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
@@ -74,6 +90,22 @@ fn run_select(
                             checked[idx] = true;
                         }
                     }
+                    KeyCode::Char('S') => {
+                        sub_filter = match sub_filter {
+                            SubFilter::All => SubFilter::Included,
+                            SubFilter::Included => SubFilter::Excluded,
+                            SubFilter::Excluded => SubFilter::All,
+                        };
+                        cursor = 0;
+                    }
+                    KeyCode::Char('M') => {
+                        mult_filter = match mult_filter {
+                            MultFilter::All => MultFilter::One,
+                            MultFilter::One => MultFilter::Two,
+                            MultFilter::Two => MultFilter::All,
+                        };
+                        cursor = 0;
+                    }
                     KeyCode::Backspace => {
                         filter.pop();
                         cursor = 0;
@@ -91,21 +123,47 @@ fn run_select(
     }
 }
 
-fn filtered_indices(models: &[ModelEntry], filter: &str) -> Vec<usize> {
-    if filter.is_empty() {
-        return (0..models.len()).collect();
-    }
+fn filtered_indices(
+    models: &[ModelEntry],
+    filter: &str,
+    sub_filter: SubFilter,
+    mult_filter: MultFilter,
+) -> Vec<usize> {
     let f = filter.to_lowercase();
     models
         .iter()
         .enumerate()
         .filter(|(_, m)| {
-            m.id.to_lowercase().contains(&f)
+            let text_ok = f.is_empty()
+                || m.id.to_lowercase().contains(&f)
                 || m.name
                     .as_deref()
                     .unwrap_or("")
                     .to_lowercase()
-                    .contains(&f)
+                    .contains(&f);
+            let sub_ok = match sub_filter {
+                SubFilter::All => true,
+                SubFilter::Included => m.subscription.as_ref().map(|s| s.included).unwrap_or(false),
+                SubFilter::Excluded => !m
+                    .subscription
+                    .as_ref()
+                    .map(|s| s.included)
+                    .unwrap_or(false),
+            };
+            let mult_ok = match mult_filter {
+                MultFilter::All => true,
+                MultFilter::One => m
+                    .subscription
+                    .as_ref()
+                    .and_then(|s| s.input_token_multiplier)
+                    == Some(1),
+                MultFilter::Two => m
+                    .subscription
+                    .as_ref()
+                    .and_then(|s| s.input_token_multiplier)
+                    == Some(2),
+            };
+            text_ok && sub_ok && mult_ok
         })
         .map(|(i, _)| i)
         .collect()
@@ -117,18 +175,31 @@ fn render(
     checked: &[bool],
     cursor: usize,
     filter: &str,
+    sub_filter: SubFilter,
+    mult_filter: MultFilter,
 ) -> Result<()> {
     let mut out = stdout();
     let (cols, rows) = size().unwrap_or((80, 24));
     execute!(out, Clear(ClearType::All), MoveTo(0, 0))?;
 
+    let sub_label = match sub_filter {
+        SubFilter::All => "all",
+        SubFilter::Included => "subscription",
+        SubFilter::Excluded => "pay-as-you-go",
+    };
+    let mult_label = match mult_filter {
+        MultFilter::All => "all",
+        MultFilter::One => "1x",
+        MultFilter::Two => "2x",
+    };
     execute!(
         out,
         SetForegroundColor(Color::Cyan),
         Print("Select models (Space toggle, Enter confirm, Esc cancel, type to filter)\r\n"),
         ResetColor
     )?;
-    execute!(out, Print(format!("Filter: {}\r\n", filter)))?;
+    execute!(out, Print(format!("Text filter: {}\r\n", filter)))?;
+    execute!(out, Print(format!("Subscription: {}   Token multiplier: {}\r\n", sub_label, mult_label)))?;
     execute!(
         out,
         Print(format!(
@@ -158,7 +229,21 @@ fn render(
         let marker = if checked[idx] { "[x]" } else { "[ ]" };
         let cursor_mark = if fi == cursor { ">" } else { " " };
         let name = models[idx].name.as_deref().unwrap_or("");
-        let mut line = format!("{} {} {}  {}", cursor_mark, marker, models[idx].id, name);
+        let sub = models[idx]
+            .subscription
+            .as_ref()
+            .map(|s| if s.included { "sub" } else { "payg" })
+            .unwrap_or("");
+        let mult = models[idx]
+            .subscription
+            .as_ref()
+            .and_then(|s| s.input_token_multiplier)
+            .map(|m| format!("{}x", m))
+            .unwrap_or_default();
+        let mut line = format!(
+            "{} {} {}  {}  [{} {}]",
+            cursor_mark, marker, models[idx].id, name, sub, mult
+        );
         if line.len() > cols as usize {
             line.truncate(cols as usize);
         }
@@ -174,7 +259,7 @@ fn render(
     execute!(
         out,
         MoveTo(0, rows.saturating_sub(1)),
-        Print("Ctrl-A: select all filtered   Backspace: delete filter char")
+        Print("Ctrl-A: select all filtered   S: subscription filter   M: multiplier filter   Backspace: delete")
     )?;
     out.flush()?;
     Ok(())
