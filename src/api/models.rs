@@ -14,6 +14,16 @@ pub struct ModelPricing {
     pub unit: Option<String>,
 }
 
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct ModelSubscription {
+    #[serde(default)]
+    pub included: bool,
+    #[serde(default, rename = "inputTokenMultiplier")]
+    pub input_token_multiplier: Option<i64>,
+    #[serde(default)]
+    pub note: Option<String>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct ModelEntry {
     pub id: String,
@@ -31,6 +41,8 @@ pub struct ModelEntry {
     pub pricing: Option<ModelPricing>,
     #[serde(default)]
     pub capabilities: Option<serde_json::Value>,
+    #[serde(default)]
+    pub subscription: Option<ModelSubscription>,
 }
 
 /// Tolerant parser for the NanoGPT `/models` response.
@@ -89,6 +101,7 @@ fn entry_from(id: String, val: &Value) -> ModelEntry {
     let max_output_tokens = val.get("max_output_tokens").and_then(|x| x.as_i64());
     let pricing = val.get("pricing").cloned().and_then(|p| serde_json::from_value(p).ok());
     let capabilities = val.get("capabilities").cloned();
+    let subscription = val.get("subscription").cloned().and_then(|s| serde_json::from_value(s).ok());
     ModelEntry {
         id,
         created,
@@ -98,6 +111,7 @@ fn entry_from(id: String, val: &Value) -> ModelEntry {
         max_output_tokens,
         pricing,
         capabilities,
+        subscription,
     }
 }
 
