@@ -37,20 +37,10 @@ pub fn run(global: GlobalArgs, args: UpdateModelsArgs) -> Result<()> {
         }
         let existing: std::collections::HashSet<String> =
             existing_model_ids(&original).into_iter().collect();
-        let labels: Vec<String> = models
-            .iter()
-            .map(|m| format!("{} — {}", m.id, m.name.clone().unwrap_or_else(|| display_name(&m.id))))
-            .collect();
-        let defaults: Vec<bool> = models.iter().map(|m| existing.contains(&m.id)).collect();
-
-        let chosen = dialoguer::MultiSelect::new()
-            .with_prompt("Select models (Space toggle, Enter confirm, type to filter)")
-            .items(&labels)
-            .defaults(&defaults)
-            .interact()
-            .context("reading selection")?;
-
-        chosen.into_iter().map(|i| models[i].id.clone()).collect()
+        match crate::commands::select::select_models(&models, &existing)? {
+            Some(ids) => ids,
+            None => anyhow::bail!("selection cancelled"),
+        }
     } else {
         select(
             &models,
