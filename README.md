@@ -25,6 +25,8 @@ export NANOGPT_API_KEY=sk-...
 opencode-nanogpt init                      # provider added, MCP disabled
 opencode-nanogpt update-models             # keeps latest 2 per family
 opencode-nanogpt update-models --interactive  # pick models from a searchable TUI
+opencode-nanogpt update-models --subscription-only
+opencode-nanogpt update-models --no-subscription --token-multiplier 2
 opencode-nanogpt update-models --per-family 1 --include 'deepseek*'
 opencode-nanogpt validate                  # confirms the section is well-formed
 ```
@@ -78,7 +80,9 @@ opencode-nanogpt update-models --interactive
 - Type to filter the full list by model ID or display name.
 - Arrow keys move the cursor; Space toggles a model; Enter confirms.
 - Esc or Ctrl-C cancels without writing anything.
-- Ctrl-S cycles the subscription filter; Ctrl-T cycles the token-multiplier filter.
+- Ctrl-S cycles the subscription filter (all / subscription / pay-as-you-go).
+- Ctrl-T cycles the token-multiplier filter (all / 1x / 2x).
+- Non-interactive equivalents: `--subscription-only`, `--no-subscription`, `--token-multiplier 1|2`.
 - Existing models are pre-selected, but the final config is replaced by your selection.
 
 ## Model filtering
