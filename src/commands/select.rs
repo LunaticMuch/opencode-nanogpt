@@ -16,7 +16,7 @@ mod tests {
     use super::*;
     use crate::api::models::{ModelEntry, ModelSubscription};
 
-    fn mk(id: &str, included: Option<bool>, mult: Option<i64>) -> ModelEntry {
+    fn mk(id: &str, included: Option<bool>, mult: Option<i64>, open_weights: Option<bool>) -> ModelEntry {
         ModelEntry {
             id: id.to_string(),
             created: None,
@@ -31,35 +31,44 @@ mod tests {
                 input_token_multiplier: mult,
                 note: None,
             }),
+            open_weights,
+            providers: None,
         }
     }
 
     #[test]
     fn filters_by_text() {
-        let models = vec![mk("openai/gpt", Some(true), Some(1)), mk("deepseek/v", Some(false), Some(2))];
-        let out = filtered_indices(&models, "gpt", SubFilter::All, MultFilter::All);
+        let models = vec![mk("openai/gpt", Some(true), Some(1), Some(true)), mk("deepseek/v", Some(false), Some(2), Some(false))];
+        let out = filtered_indices(&models, "gpt", SubFilter::All, MultFilter::All, OpenWeightsFilter::All);
         assert_eq!(out, vec![0]);
     }
 
     #[test]
     fn filters_subscription_included() {
-        let models = vec![mk("a", Some(true), Some(1)), mk("b", Some(false), Some(2))];
-        let out = filtered_indices(&models, "", SubFilter::Included, MultFilter::All);
+        let models = vec![mk("a", Some(true), Some(1), None), mk("b", Some(false), Some(2), None)];
+        let out = filtered_indices(&models, "", SubFilter::Included, MultFilter::All, OpenWeightsFilter::All);
         assert_eq!(out, vec![0]);
     }
 
     #[test]
     fn filters_subscription_excluded() {
-        let models = vec![mk("a", Some(true), Some(1)), mk("b", Some(false), Some(2))];
-        let out = filtered_indices(&models, "", SubFilter::Excluded, MultFilter::All);
+        let models = vec![mk("a", Some(true), Some(1), None), mk("b", Some(false), Some(2), None)];
+        let out = filtered_indices(&models, "", SubFilter::Excluded, MultFilter::All, OpenWeightsFilter::All);
         assert_eq!(out, vec![1]);
     }
 
     #[test]
     fn filters_multiplier() {
-        let models = vec![mk("a", Some(true), Some(1)), mk("b", Some(true), Some(2))];
-        assert_eq!(filtered_indices(&models, "", SubFilter::All, MultFilter::One), vec![0]);
-        assert_eq!(filtered_indices(&models, "", SubFilter::All, MultFilter::Two), vec![1]);
+        let models = vec![mk("a", Some(true), Some(1), None), mk("b", Some(true), Some(2), None)];
+        assert_eq!(filtered_indices(&models, "", SubFilter::All, MultFilter::One, OpenWeightsFilter::All), vec![0]);
+        assert_eq!(filtered_indices(&models, "", SubFilter::All, MultFilter::Two, OpenWeightsFilter::All), vec![1]);
+    }
+
+    #[test]
+    fn filters_open_weights() {
+        let models = vec![mk("a", None, None, Some(true)), mk("b", None, None, Some(false))];
+        assert_eq!(filtered_indices(&models, "", SubFilter::All, MultFilter::All, OpenWeightsFilter::Open), vec![0]);
+        assert_eq!(filtered_indices(&models, "", SubFilter::All, MultFilter::All, OpenWeightsFilter::Closed), vec![1]);
     }
 }
 
@@ -75,6 +84,13 @@ enum MultFilter {
     All,
     One,
     Two,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum OpenWeightsFilter {
+    All,
+    Open,
+    Closed,
 }
 
 pub fn select_models(
@@ -100,14 +116,15 @@ fn run_select(
     let mut cursor: usize = 0;
     let mut sub_filter = SubFilter::All;
     let mut mult_filter = MultFilter::All;
+    let mut open_filter = OpenWeightsFilter::All;
 
     loop {
-        let filtered = filtered_indices(models, &filter, sub_filter, mult_filter);
+        let filtered = filtered_indices(models, &filter, sub_filter, mult_filter, open_filter);
         if cursor >= filtered.len() && !filtered.is_empty() {
             cursor = filtered.len() - 1;
         }
 
-        render(models, &filtered, &checked, cursor, &filter, sub_filter, mult_filter)?;
+        render(models, &filtered, &checked, cursor, &filter, sub_filter, mult_filter, open_filter)?;
 
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
@@ -158,6 +175,14 @@ fn run_select(
                         };
                         cursor = 0;
                     }
+                    KeyCode::Char('o') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        open_filter = match open_filter {
+                            OpenWeightsFilter::All => OpenWeightsFilter::Open,
+                            OpenWeightsFilter::Open => OpenWeightsFilter::Closed,
+                            OpenWeightsFilter::Closed => OpenWeightsFilter::All,
+                        };
+                        cursor = 0;
+                    }
                     KeyCode::Backspace => {
                         filter.pop();
                         cursor = 0;
@@ -180,6 +205,7 @@ fn filtered_indices(
     filter: &str,
     sub_filter: SubFilter,
     mult_filter: MultFilter,
+    open_filter: OpenWeightsFilter,
 ) -> Vec<usize> {
     let f = filter.to_lowercase();
     models
@@ -215,7 +241,12 @@ fn filtered_indices(
                     .and_then(|s| s.input_token_multiplier)
                     == Some(2),
             };
-            text_ok && sub_ok && mult_ok
+            let open_ok = match open_filter {
+                OpenWeightsFilter::All => true,
+                OpenWeightsFilter::Open => m.open_weights == Some(true),
+                OpenWeightsFilter::Closed => m.open_weights == Some(false),
+            };
+            text_ok && sub_ok && mult_ok && open_ok
         })
         .map(|(i, _)| i)
         .collect()
@@ -229,6 +260,7 @@ fn render(
     filter: &str,
     sub_filter: SubFilter,
     mult_filter: MultFilter,
+    open_filter: OpenWeightsFilter,
 ) -> Result<()> {
     let mut out = stdout();
     let (cols, rows) = size().unwrap_or((80, 24));
@@ -244,6 +276,11 @@ fn render(
         MultFilter::One => "1x",
         MultFilter::Two => "2x",
     };
+    let open_label = match open_filter {
+        OpenWeightsFilter::All => "all",
+        OpenWeightsFilter::Open => "open",
+        OpenWeightsFilter::Closed => "closed",
+    };
     execute!(
         out,
         SetForegroundColor(Color::Cyan),
@@ -251,7 +288,7 @@ fn render(
         ResetColor
     )?;
     execute!(out, Print(format!("Text filter: {}\r\n", filter)))?;
-    execute!(out, Print(format!("Subscription: {}   Token multiplier: {}\r\n", sub_label, mult_label)))?;
+    execute!(out, Print(format!("Subscription: {}   Token multiplier: {}   Open weights: {}\r\n", sub_label, mult_label, open_label)))?;
     execute!(
         out,
         Print(format!(
@@ -262,8 +299,9 @@ fn render(
         ))
     )?;
 
-    let header_rows: u16 = 4;
-    let list_height = rows.saturating_sub(header_rows + 1) as usize;
+    let header_rows: u16 = 5;
+    let detail_rows: u16 = 7;
+    let list_height = rows.saturating_sub(header_rows + detail_rows + 1) as usize;
     let start = if filtered.len() <= list_height {
         0
     } else {
@@ -292,9 +330,13 @@ fn render(
             .and_then(|s| s.input_token_multiplier)
             .map(|m| format!("{}x", m))
             .unwrap_or_default();
+        let ow = models[idx]
+            .open_weights
+            .map(|b| if b { "open" } else { "closed" })
+            .unwrap_or("");
         let mut line = format!(
-            "{} {} {}  {}  [{} {}]",
-            cursor_mark, marker, models[idx].id, name, sub, mult
+            "{} {} {}  {}  [{} {} {}]",
+            cursor_mark, marker, models[idx].id, name, sub, mult, ow
         );
         if line.len() > cols as usize {
             line.truncate(cols as usize);
@@ -308,10 +350,49 @@ fn render(
         }
     }
 
+    // Detail pane for highlighted model.
+    let detail_start = rows.saturating_sub(detail_rows + 1);
+    execute!(out, MoveTo(0, detail_start))?;
+    execute!(out, SetForegroundColor(Color::Cyan))?;
+    execute!(out, Print("─".repeat(cols as usize)))?;
+    execute!(out, Print("\r\n"))?;
+    execute!(out, ResetColor)?;
+    if let Some(&idx) = filtered.get(cursor) {
+        let m = &models[idx];
+        let name = m.name.as_deref().unwrap_or("");
+        execute!(out, Print(format!("{} — {}\r\n", m.id, name)))?;
+        execute!(out, Print(format!(
+            "Context: {}   Max output: {}\r\n",
+            m.context_length.map(|v| v.to_string()).unwrap_or_else(|| "-".into()),
+            m.max_output_tokens.map(|v| v.to_string()).unwrap_or_else(|| "-".into())
+        )))?;
+        if let Some(p) = &m.pricing {
+            execute!(out, Print(format!(
+                "Cost (per 1M): input {}  output {}\r\n",
+                p.prompt.map(|v| v.to_string()).unwrap_or_else(|| "-".into()),
+                p.completion.map(|v| v.to_string()).unwrap_or_else(|| "-".into())
+            )))?;
+        } else {
+            execute!(out, Print("Cost: -\r\n"))?;
+        }
+        execute!(out, Print(format!(
+            "Open weights: {}   Providers: {}\r\n",
+            m.open_weights.map(|b| if b { "yes" } else { "no" }).unwrap_or("-"),
+            m.providers.as_ref().map(|p| p.join(", ")).unwrap_or_else(|| "-".into())
+        )))?;
+        let caps = m.capabilities.as_ref().and_then(|c| c.as_object()).map(|o| {
+            o.iter()
+                .filter_map(|(k, v)| if v.as_bool() == Some(true) { Some(k.as_str()) } else { None })
+                .collect::<Vec<_>>()
+                .join(", ")
+        }).unwrap_or_default();
+        execute!(out, Print(format!("Capabilities: {}\r\n", if caps.is_empty() { "-" } else { &caps })))?;
+    }
+
     execute!(
         out,
         MoveTo(0, rows.saturating_sub(1)),
-        Print("Ctrl-A: select all filtered   Ctrl-S: subscription filter   Ctrl-T: multiplier filter   Backspace: delete")
+        Print("Ctrl-A: select all filtered   Ctrl-S: subscription   Ctrl-T: multiplier   Ctrl-O: open weights   Backspace: delete")
     )?;
     out.flush()?;
     Ok(())
