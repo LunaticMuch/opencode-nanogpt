@@ -23,6 +23,7 @@ export NANOGPT_API_KEY=sk-...
 
 opencode-nanogpt init                      # provider added, MCP disabled
 opencode-nanogpt update-models             # keeps latest 2 per family
+opencode-nanogpt update-models --interactive  # pick models from a searchable TUI
 opencode-nanogpt update-models --per-family 1 --include 'deepseek*'
 opencode-nanogpt validate                  # confirms the section is well-formed
 ```
