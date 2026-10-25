@@ -3,6 +3,7 @@ use serde::Deserialize;
 use serde_json::Value;
 
 #[derive(Debug, Clone, Deserialize, Default)]
+#[allow(dead_code)]
 pub struct ModelPricing {
     #[serde(default)]
     pub prompt: Option<f64>,
@@ -14,7 +15,19 @@ pub struct ModelPricing {
     pub unit: Option<String>,
 }
 
+#[derive(Debug, Clone, Deserialize, Default)]
+#[allow(dead_code)]
+pub struct ModelSubscription {
+    #[serde(default)]
+    pub included: bool,
+    #[serde(default, rename = "inputTokenMultiplier")]
+    pub input_token_multiplier: Option<i64>,
+    #[serde(default)]
+    pub note: Option<String>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct ModelEntry {
     pub id: String,
     #[serde(default)]
@@ -31,6 +44,8 @@ pub struct ModelEntry {
     pub pricing: Option<ModelPricing>,
     #[serde(default)]
     pub capabilities: Option<serde_json::Value>,
+    #[serde(default)]
+    pub subscription: Option<ModelSubscription>,
 }
 
 /// Tolerant parser for the NanoGPT `/models` response.
@@ -89,6 +104,7 @@ fn entry_from(id: String, val: &Value) -> ModelEntry {
     let max_output_tokens = val.get("max_output_tokens").and_then(|x| x.as_i64());
     let pricing = val.get("pricing").cloned().and_then(|p| serde_json::from_value(p).ok());
     let capabilities = val.get("capabilities").cloned();
+    let subscription = val.get("subscription").cloned().and_then(|s| serde_json::from_value(s).ok());
     ModelEntry {
         id,
         created,
@@ -98,6 +114,7 @@ fn entry_from(id: String, val: &Value) -> ModelEntry {
         max_output_tokens,
         pricing,
         capabilities,
+        subscription,
     }
 }
 
@@ -142,5 +159,31 @@ mod tests {
     fn empty_object_errors() {
         let v = json!({});
         assert!(parse_models(&v).is_err());
+    }
+
+    #[test]
+    fn parses_subscription_metadata() {
+        let v = json!({
+            "data": [
+                {
+                    "id": "x/model",
+                    "name": "Model",
+                    "created": 10,
+                    "context_length": 1000,
+                    "max_output_tokens": 100,
+                    "pricing": { "prompt": 1.0, "completion": 2.0, "currency": "USD", "unit": "per_million_tokens" },
+                    "subscription": { "included": true, "inputTokenMultiplier": 2, "note": "included" }
+                }
+            ]
+        });
+        let models = parse_models(&v).unwrap();
+        assert_eq!(models.len(), 1);
+        let m = &models[0];
+        assert_eq!(m.context_length, Some(1000));
+        assert_eq!(m.max_output_tokens, Some(100));
+        assert_eq!(m.pricing.as_ref().unwrap().prompt, Some(1.0));
+        let sub = m.subscription.as_ref().unwrap();
+        assert!(sub.included);
+        assert_eq!(sub.input_token_multiplier, Some(2));
     }
 }

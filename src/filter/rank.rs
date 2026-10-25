@@ -88,6 +88,7 @@ mod tests {
             max_output_tokens: None,
             pricing: None,
             capabilities: None,
+            subscription: None,
         }
     }
 
