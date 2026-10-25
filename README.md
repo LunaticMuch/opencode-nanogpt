@@ -78,6 +78,7 @@ opencode-nanogpt update-models --interactive
 - Type to filter the full list by model ID or display name.
 - Arrow keys move the cursor; Space toggles a model; Enter confirms.
 - Esc or Ctrl-C cancels without writing anything.
+- Ctrl-S cycles the subscription filter; Ctrl-T cycles the token-multiplier filter.
 - Existing models are pre-selected, but the final config is replaced by your selection.
 
 ## Model filtering
