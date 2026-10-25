@@ -82,6 +82,8 @@ opencode-nanogpt update-models --interactive
 - Esc or Ctrl-C cancels without writing anything.
 - Ctrl-S cycles the subscription filter (all / subscription / pay-as-you-go).
 - Ctrl-T cycles the token-multiplier filter (all / 1x / 2x).
+- Ctrl-O cycles the open-weights filter (all / open / closed).
+- The highlighted model shows a detail pane with context, cost, open weights, providers, and capabilities.
 - Non-interactive equivalents: `--subscription-only`, `--no-subscription`, `--token-multiplier 1|2`.
 - Existing models are pre-selected, but the final config is replaced by your selection.
 
