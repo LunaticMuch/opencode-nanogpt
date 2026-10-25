@@ -46,6 +46,10 @@ pub struct ModelEntry {
     pub capabilities: Option<serde_json::Value>,
     #[serde(default)]
     pub subscription: Option<ModelSubscription>,
+    #[serde(default, rename = "open_weights")]
+    pub open_weights: Option<bool>,
+    #[serde(default)]
+    pub providers: Option<Vec<String>>,
 }
 
 /// Tolerant parser for the NanoGPT `/models` response.
@@ -105,6 +109,11 @@ fn entry_from(id: String, val: &Value) -> ModelEntry {
     let pricing = val.get("pricing").cloned().and_then(|p| serde_json::from_value(p).ok());
     let capabilities = val.get("capabilities").cloned();
     let subscription = val.get("subscription").cloned().and_then(|s| serde_json::from_value(s).ok());
+    let open_weights = val.get("open_weights").and_then(|v| v.as_bool());
+    let providers = val
+        .get("providers")
+        .and_then(|v| v.as_array())
+        .map(|a| a.iter().filter_map(|x| x.as_str().map(str::to_string)).collect());
     ModelEntry {
         id,
         created,
@@ -115,6 +124,8 @@ fn entry_from(id: String, val: &Value) -> ModelEntry {
         pricing,
         capabilities,
         subscription,
+        open_weights,
+        providers,
     }
 }
 

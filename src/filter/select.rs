@@ -62,6 +62,8 @@ mod tests {
             pricing: None,
             capabilities: None,
             subscription: None,
+            open_weights: None,
+            providers: None,
         }
     }
 

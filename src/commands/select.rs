@@ -16,7 +16,7 @@ mod tests {
     use super::*;
     use crate::api::models::{ModelEntry, ModelSubscription};
 
-    fn mk(id: &str, included: Option<bool>, mult: Option<i64>) -> ModelEntry {
+    fn mk(id: &str, included: Option<bool>, mult: Option<i64>, open_weights: Option<bool>) -> ModelEntry {
         ModelEntry {
             id: id.to_string(),
             created: None,
@@ -31,33 +31,35 @@ mod tests {
                 input_token_multiplier: mult,
                 note: None,
             }),
+            open_weights,
+            providers: None,
         }
     }
 
     #[test]
     fn filters_by_text() {
-        let models = vec![mk("openai/gpt", Some(true), Some(1)), mk("deepseek/v", Some(false), Some(2))];
+        let models = vec![mk("openai/gpt", Some(true), Some(1), Some(true)), mk("deepseek/v", Some(false), Some(2), Some(false))];
         let out = filtered_indices(&models, "gpt", SubFilter::All, MultFilter::All);
         assert_eq!(out, vec![0]);
     }
 
     #[test]
     fn filters_subscription_included() {
-        let models = vec![mk("a", Some(true), Some(1)), mk("b", Some(false), Some(2))];
+        let models = vec![mk("a", Some(true), Some(1), None), mk("b", Some(false), Some(2), None)];
         let out = filtered_indices(&models, "", SubFilter::Included, MultFilter::All);
         assert_eq!(out, vec![0]);
     }
 
     #[test]
     fn filters_subscription_excluded() {
-        let models = vec![mk("a", Some(true), Some(1)), mk("b", Some(false), Some(2))];
+        let models = vec![mk("a", Some(true), Some(1), None), mk("b", Some(false), Some(2), None)];
         let out = filtered_indices(&models, "", SubFilter::Excluded, MultFilter::All);
         assert_eq!(out, vec![1]);
     }
 
     #[test]
     fn filters_multiplier() {
-        let models = vec![mk("a", Some(true), Some(1)), mk("b", Some(true), Some(2))];
+        let models = vec![mk("a", Some(true), Some(1), None), mk("b", Some(true), Some(2), None)];
         assert_eq!(filtered_indices(&models, "", SubFilter::All, MultFilter::One), vec![0]);
         assert_eq!(filtered_indices(&models, "", SubFilter::All, MultFilter::Two), vec![1]);
     }
