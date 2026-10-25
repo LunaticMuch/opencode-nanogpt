@@ -96,4 +96,13 @@ pub struct UpdateModelsArgs {
     /// Remove models no longer in the API response (default: keep existing)
     #[arg(long)]
     pub prune: bool,
+    /// Only keep models included in the NanoGPT subscription
+    #[arg(long, conflicts_with = "no_subscription")]
+    pub subscription_only: bool,
+    /// Exclude models included in the NanoGPT subscription
+    #[arg(long, conflicts_with = "subscription_only")]
+    pub no_subscription: bool,
+    /// Only keep models whose subscription input token multiplier matches (1 or 2)
+    #[arg(long, value_parser = clap::value_parser!(i64))]
+    pub token_multiplier: Option<i64>,
 }

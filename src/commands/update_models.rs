@@ -28,8 +28,25 @@ pub fn run(global: GlobalArgs, args: UpdateModelsArgs) -> Result<()> {
         .or_else(|| std::env::var("NANOGPT_API_KEY").ok());
 
     eprintln!("fetching models from {base_url} …");
-    let models = fetch_models(&base_url, api_key.as_deref(), true)?;
+    let mut models = fetch_models(&base_url, api_key.as_deref(), true)?;
     eprintln!("got {} models", models.len());
+
+    // Optional subscription-based filtering (applies to both interactive
+    // and non-interactive runs).
+    if args.subscription_only {
+        models.retain(|m| m.subscription.as_ref().map(|s| s.included).unwrap_or(false));
+    }
+    if args.no_subscription {
+        models.retain(|m| !m.subscription.as_ref().map(|s| s.included).unwrap_or(false));
+    }
+    if let Some(mult) = args.token_multiplier {
+        models.retain(|m| {
+            m.subscription
+                .as_ref()
+                .and_then(|s| s.input_token_multiplier)
+                == Some(mult)
+        });
+    }
 
     let ids = if args.interactive {
         if !std::io::stdin().is_terminal() {
