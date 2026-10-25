@@ -90,7 +90,7 @@ fn run_select(
                             checked[idx] = true;
                         }
                     }
-                    KeyCode::Char('S') => {
+                    KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         sub_filter = match sub_filter {
                             SubFilter::All => SubFilter::Included,
                             SubFilter::Included => SubFilter::Excluded,
@@ -98,7 +98,7 @@ fn run_select(
                         };
                         cursor = 0;
                     }
-                    KeyCode::Char('M') => {
+                    KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         mult_filter = match mult_filter {
                             MultFilter::All => MultFilter::One,
                             MultFilter::One => MultFilter::Two,
@@ -259,7 +259,7 @@ fn render(
     execute!(
         out,
         MoveTo(0, rows.saturating_sub(1)),
-        Print("Ctrl-A: select all filtered   S: subscription filter   M: multiplier filter   Backspace: delete")
+        Print("Ctrl-A: select all filtered   Ctrl-S: subscription filter   Ctrl-T: multiplier filter   Backspace: delete")
     )?;
     out.flush()?;
     Ok(())
